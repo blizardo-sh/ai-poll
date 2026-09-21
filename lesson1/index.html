@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light"><meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Занятие 1 · Работаем вместе с агентом</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><a href="./" class="brand">Работаем вместе с агентом</a><span>Занятие 1</span><button id="login" class="quiet">Вход преподавателя</button><button id="logout" class="quiet" hidden>Выйти</button></header>
+<div id="connection" class="connection" role="status">Подключаемся к занятию…</div>
+<main>
+  <section aria-labelledby="question"><div class="question-head"><p id="step"></p><p id="phase"></p></div><h1 id="question">Сейчас начнём</h1><p id="hint" class="hint">Вопрос появится здесь, когда преподаватель начнёт встречу.</p>
+  <div id="prompt-box" hidden><details id="prompt-details"><summary>Запрос для агента</summary><pre id="prompt"></pre><button id="copy">Скопировать запрос</button></details></div>
+  <div id="choices" class="choices"></div>
+  <div class="response-line"><p id="vote-status" role="status" aria-live="polite"></p><p id="total"></p></div>
+  <section id="results" hidden aria-label="Результаты голосования"><h2>Как ответила группа</h2><div id="bars"></div></section>
+  <section id="explanation-box" hidden aria-label="Разбор"><h2>Обсудим</h2><p id="explanation"></p></section>
+  </section>
+  <section id="teacher" hidden aria-label="Управление преподавателя"><h2>Управление занятием</h2><div class="toolbar"><button id="start">Начать голосование</button><button id="close">Закончить</button><button id="explain">Показать разбор</button><button id="next">Следующий вопрос</button></div>
+  <details><summary>Выбрать вопрос или изменить запрос</summary><div class="settings"><label for="question-select">Вопрос</label><select id="question-select"></select><button id="choose">Перейти к вопросу</button><button id="repeat">Повторить голосование</button><label for="prompt-edit">Запрос, который группа будет копировать</label><textarea id="prompt-edit" rows="7" maxlength="4000"></textarea><button id="update-prompt">Обновить запрос</button><button id="new-session">Новая встреча</button></div></details></section>
+  <p id="message" role="alert" aria-live="assertive"></p>
+</main>
+<footer><a href="lab1.zip" download>Скачать учебную папку</a><span>Ответы агентов обсуждаем в чате встречи.</span><span>Здесь сохраняются только выбранные варианты.</span></footer>
+<noscript>Для голосования включите JavaScript. Если страница не открывается, отправьте номер варианта в чат встречи.</noscript>
+<script src="config.js"></script><script type="module" src="app.js"></script>
+</body></html>
