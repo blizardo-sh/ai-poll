@@ -8,11 +8,11 @@
         ".write": false
       },
       "teacherAccess": {
-        ".read": "auth != null && auth.token.email_verified === true && auth.token.email === root.child('lesson1/teacherEmail').val() && auth.token.firebase.sign_in_provider === 'google.com'",
+        ".read": false,
         ".write": false
       },
       "explanations": {
-        ".read": "auth != null && auth.token.email_verified === true && auth.token.email === root.child('lesson1/teacherEmail').val() && auth.token.firebase.sign_in_provider === 'google.com'",
+        ".read": "auth != null",
         ".write": false
       },
       "catalog": {
@@ -23,7 +23,7 @@
         "$room": {
           "state": {
             ".read": "auth != null",
-            ".write": "auth != null && auth.token.email_verified === true && auth.token.email === root.child('lesson1/teacherEmail').val() && auth.token.firebase.sign_in_provider === 'google.com' && newData.exists()",
+            ".write": "auth != null && newData.exists()",
             ".validate": "newData.hasChildren(['question','phase','round','session','prompt']) && root.child('lesson1/catalog/'+newData.child('question').val()).exists()",
             "question": {
               ".validate": "newData.isString()"
@@ -46,48 +46,26 @@
           },
           "votes": {
             "$round": {
-              ".read": "auth != null && auth.token.email_verified === true && auth.token.email === root.child('lesson1/teacherEmail').val() && auth.token.firebase.sign_in_provider === 'google.com'",
+              ".read": "auth != null && root.child('lesson1/rooms/'+$room+'/state').child('round').val() === $round",
               "$uid": {
                 ".read": "auth != null && auth.uid === $uid",
-                ".write": "auth != null && auth.uid === $uid && !(auth != null && auth.token.email_verified === true && auth.token.email === root.child('lesson1/teacherEmail').val() && auth.token.firebase.sign_in_provider === 'google.com') && root.child('lesson1/rooms/'+$room+'/state').child('round').val() === $round && root.child('lesson1/rooms/'+$room+'/state').child('phase').val() === 'open' && newData.exists()",
+                ".write": "auth != null && auth.uid === $uid && root.child('lesson1/rooms/'+$room+'/state').child('round').val() === $round && root.child('lesson1/rooms/'+$room+'/state').child('phase').val() === 'open' && newData.exists()",
                 ".validate": "newData.isNumber() && root.child('lesson1/catalog/'+root.child('lesson1/rooms/'+$room+'/state').child('question').val()+'/options/'+newData.val()).exists()"
               }
             }
           },
           "stats": {
-            "$round": {
-              "total": {
-                ".read": "auth != null",
-                ".write": "auth != null && auth.token.email_verified === true && auth.token.email === root.child('lesson1/teacherEmail').val() && auth.token.firebase.sign_in_provider === 'google.com'",
-                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
-              },
-              "$other": {
-                ".validate": false
-              }
-            }
+            ".read": false,
+            ".write": false
           },
           "results": {
-            "$round": {
-              ".read": "(auth != null && auth.token.email_verified === true && auth.token.email === root.child('lesson1/teacherEmail').val() && auth.token.firebase.sign_in_provider === 'google.com') || (auth != null && root.child('lesson1/rooms/'+$room+'/state').child('round').val() === $round)",
-              ".write": "auth != null && auth.token.email_verified === true && auth.token.email === root.child('lesson1/teacherEmail').val() && auth.token.firebase.sign_in_provider === 'google.com' && newData.exists()",
-              ".validate": "newData.hasChildren(['counts','total'])",
-              "total": {
-                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
-              },
-              "counts": {
-                "$i": {
-                  ".validate": "$i.matches(/^[0-5]$/) && newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
-                }
-              },
-              "$other": {
-                ".validate": false
-              }
-            }
+            ".read": false,
+            ".write": false
           },
           "revealed": {
             "$round": {
-              ".read": "(auth != null && auth.token.email_verified === true && auth.token.email === root.child('lesson1/teacherEmail').val() && auth.token.firebase.sign_in_provider === 'google.com') || (auth != null && root.child('lesson1/rooms/'+$room+'/state').child('round').val() === $round && root.child('lesson1/rooms/'+$room+'/state').child('phase').val() === 'explanation')",
-              ".write": "auth != null && auth.token.email_verified === true && auth.token.email === root.child('lesson1/teacherEmail').val() && auth.token.firebase.sign_in_provider === 'google.com' && newData.exists()",
+              ".read": "auth != null && root.child('lesson1/rooms/'+$room+'/state').child('round').val() === $round && root.child('lesson1/rooms/'+$room+'/state').child('phase').val() === 'explanation'",
+              ".write": "auth != null && root.child('lesson1/rooms/'+$room+'/state').child('round').val() === $round && newData.exists()",
               ".validate": "newData.isString() && newData.val().length <= 4000"
             }
           }
