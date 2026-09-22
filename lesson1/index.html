@@ -4,19 +4,22 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light"><meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Занятие 1 · Работаем вместе с агентом</title>
-<link rel="stylesheet" href="style.css?v=20260922">
+<link rel="stylesheet" href="style.css?v=20260922-qr">
 </head>
 <body class="with-controls">
-<header><a href="./" class="brand">Работаем вместе с агентом</a><span>Занятие 1</span></header>
+<header><a href="./" class="brand">Работаем вместе с агентом</a><span>Занятие 1</span><a class="qr-jump" href="#vote-qr">QR-код</a></header>
 <div id="connection" class="connection" role="status">Подключаемся к занятию…</div>
 <main>
+  <div class="poll-layout">
   <section aria-labelledby="question"><div class="question-head"><p id="step"></p><p id="phase"></p></div><h1 id="question">Сейчас начнём</h1><p id="hint" class="hint">Вопрос появится здесь, когда преподаватель начнёт встречу.</p>
   <div id="prompt-box" hidden><details id="prompt-details"><summary>Запрос для агента</summary><pre id="prompt"></pre><button id="copy">Скопировать запрос</button></details></div>
   <div id="choices" class="choices"></div>
   <div class="response-line"><p id="vote-status" role="status" aria-live="polite"></p><p id="total"></p></div>
   <section id="explanation-box" hidden aria-label="Разбор"><h2>Обсудим</h2><p id="explanation"></p></section>
   </section>
-  <section id="teacher" aria-label="Управление занятием"><h2>Управление занятием</h2><div class="toolbar"><button id="start" aria-keyshortcuts="S" title="Клавиша S">Начать голосование <kbd aria-hidden="true">S</kbd></button><button id="close" aria-keyshortcuts="C" title="Клавиша C">Закончить <kbd aria-hidden="true">C</kbd></button><button id="explain" aria-keyshortcuts="O" title="Клавиша O">Показать разбор <kbd aria-hidden="true">O</kbd></button><button id="next" aria-keyshortcuts="N" title="Клавиша N">Следующий вопрос <kbd aria-hidden="true">N</kbd></button></div>
+  <aside id="vote-qr" class="join-vote" aria-label="QR-код для голосования"><img src="assets/vote-qr.svg" width="196" height="196" alt="QR-код: blizardo-sh.github.io/ai-poll/lesson1/"><p>Голосование<br>с телефона</p></aside>
+  </div>
+  <section id="teacher" aria-label="Управление занятием"><h2>Управление занятием</h2><div class="toolbar"><button id="start" aria-label="Начать голосование" aria-keyshortcuts="S" title="Клавиша S">Начать <kbd aria-hidden="true">S</kbd></button><button id="close" aria-label="Закончить" aria-keyshortcuts="C" title="Клавиша C">Закончить <kbd aria-hidden="true">C</kbd></button><button id="explain" aria-label="Показать разбор" aria-keyshortcuts="O" title="Клавиша O">Разбор <kbd aria-hidden="true">O</kbd></button><button id="next" aria-label="Следующий вопрос" aria-keyshortcuts="N" title="Клавиша N">Дальше <kbd aria-hidden="true">N</kbd></button></div>
   <details><summary>Выбрать вопрос или изменить запрос</summary><div class="settings"><label for="question-select">Вопрос</label><select id="question-select"></select><button id="choose">Перейти к вопросу</button><button id="repeat">Повторить голосование</button><label for="prompt-edit">Запрос, который группа будет копировать</label><textarea id="prompt-edit" rows="7" maxlength="4000"></textarea><button id="update-prompt">Обновить запрос</button><button id="new-session">Новая встреча</button></div></details></section>
   <p id="message" role="alert" aria-live="assertive"></p>
 </main>
