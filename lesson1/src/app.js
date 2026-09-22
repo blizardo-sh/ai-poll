@@ -5,14 +5,16 @@ import {questions,prompts} from '../content.js';
 
 const $=id=>document.getElementById(id);
 const byId=Object.fromEntries(questions.map(q=>[q.id,q]));
+const isDeckBridge=window.parent!==window&&new URLSearchParams(location.search).get('bridge')==='1';
 const base='lesson1',room=`${base}/rooms/main`;
 let state=null,user=null,online=false,busy=false,selection=null,total=0;
 let db,auth,roundSubscriptions=[],unsubState=null;
+let votesLoaded=false;
 let confirmedRound='',pendingVote=false,liveResults={counts:[],total:0};
 const phaseNames={idle:'Скоро начнём',open:'Можно отвечать',closed:'Голосование закончено',results:'Ответы группы',explanation:'Обсуждаем ответы'};
 const hasResults=s=>['open','closed','results','explanation'].includes(s?.phase);
 const sameState=(a,b)=>a?.round===b?.round && a?.phase===b?.phase && a?.question===b?.question;
-function message(text=''){$('message').textContent=text;}
+function message(text=''){$('message').textContent=text;postDeckSnapshot();}
 function setBusy(value){busy=value;document.body.classList.toggle('busy',value);renderControls();}
 function notice(error){
   const code=String(error?.code||error?.message||'');
@@ -28,6 +30,7 @@ function renderControls(){
   ['choose','repeat'].forEach(id=>$(id).disabled=off||state?.phase==='open');
   $('new-session').disabled=off;
   $('update-prompt').disabled=off||!state||state.phase==='open'||!byId[state.question]?.promptId;
+  postDeckSnapshot();
 }
 function renderChoices(){
   const q=byId[state?.question]; if(!q)return;
@@ -60,7 +63,7 @@ function render(){
 }
 function clearRound(){
   roundSubscriptions.forEach(unsubscribe=>unsubscribe());roundSubscriptions=[];
-  selection=null;confirmedRound='';total=0;liveResults={counts:[],total:0};$('explanation').textContent='';
+  votesLoaded=false;selection=null;confirmedRound='';total=0;liveResults={counts:[],total:0};$('explanation').textContent='';
 }
 function watchRound(s){
   clearRound();if(!user)return;
@@ -68,14 +71,14 @@ function watchRound(s){
     if(state?.round!==s.round)return;
     const votes=snap.val()||{};const counts=byId[s.question].options.map(()=>0);
     for(const choice of Object.values(votes))if(Number.isInteger(choice)&&choice>=0&&choice<counts.length)counts[choice]++;
-    total=counts.reduce((sum,count)=>sum+count,0);liveResults={counts,total};
+    total=counts.reduce((sum,count)=>sum+count,0);liveResults={counts,total};votesLoaded=true;
     if(!pendingVote){selection=votes[user.uid]??null;confirmedRound=selection===null?'':s.round;}
     render();
   },error=>{if(state?.round===s.round)notice(error)}));
 }
 async function revealData(s){
   if(s.phase!=='explanation')return;
-  try{const result=await get(ref(db,`${room}/revealed/${s.round}`));if(state?.round===s.round&&state.phase==='explanation')$('explanation').textContent=result.val()||'';}
+  try{const result=await get(ref(db,`${room}/revealed/${s.round}`));if(state?.round===s.round&&state.phase==='explanation'){$('explanation').textContent=result.val()||'';postDeckSnapshot();}}
   catch(error){if(state?.round===s.round)notice(error)}
 }
 async function vote(choice){
@@ -88,7 +91,7 @@ async function change(expected,patch){
   const result=await runTransaction(ref(db,`${room}/state`),current=>sameState(current,expected)?{...current,...patch}:undefined,{applyLocally:false});
   if(!result.committed)throw new Error('State changed');
 }
-async function action(fn){if(busy||!online||!user)return;setBusy(true);message();try{await fn()}catch(e){notice(e)}finally{setBusy(false)}}
+async function action(fn){if(busy||!online||!user)return false;setBusy(true);message();try{await fn();return true}catch(e){notice(e);return false}finally{setBusy(false)}}
 function newState(question,session){return {question,session,round:crypto.randomUUID(),phase:'idle',prompt:prompts[byId[question].promptId]||''};}
 async function moveTo(question,newSession=false){
   const s=state;const next=newState(question,newSession?crypto.randomUUID():(s?.session||crypto.randomUUID()));
@@ -96,12 +99,13 @@ async function moveTo(question,newSession=false){
 }
 $('start').onclick=()=>action(()=>change(state,{phase:'open'}));
 $('close').onclick=()=>action(()=>change(state,{phase:'closed'}));
-$('explain').onclick=()=>action(async()=>{
+async function showExplanation(){
   const s={...state};const explanation=(await get(ref(db,`${base}/explanations/${s.question}`))).val();
   if(!explanation)throw new Error('No explanation');
   await set(ref(db,`${room}/revealed/${s.round}`),explanation);
   await change(s,{phase:'explanation'});
-});
+}
+$('explain').onclick=()=>action(showExplanation);
 $('next').onclick=()=>action(()=>moveTo(questions[questions.findIndex(q=>q.id===state.question)+1].id));
 $('repeat').onclick=()=>action(()=>moveTo(state.question));
 $('choose').onclick=()=>action(()=>moveTo($('question-select').value));
@@ -116,6 +120,34 @@ addEventListener('keydown',event=>{
   const key=event.code||({s:'KeyS','ы':'KeyS',c:'KeyC','с':'KeyC',o:'KeyO','щ':'KeyO',n:'KeyN','т':'KeyN'}[event.key.toLowerCase()]);
   const id={KeyS:'start',KeyC:'close',KeyO:'explain',KeyN:'next'}[key];
   if(id&&!$(id).disabled){event.preventDefault();$(id).click();}
+});
+
+// Only aggregate results are sent to the presentation. No tokens or voter IDs leave this frame.
+function postDeckSnapshot(){
+  if(!isDeckBridge)return;
+  window.parent.postMessage({type:'lesson1:snapshot',ready:online&&!!user&&(!state||votesLoaded),online,busy,
+    question:state?.question||'',phase:state?.phase||'',round:state?.round||'',session:state?.session||'',
+    counts:liveResults.counts,total:liveResults.total,explanation:state?.phase==='explanation'?$('explanation').textContent:'',error:$('message').textContent},'*');
+}
+addEventListener('message',async event=>{
+  if(!isDeckBridge||event.source!==window.parent)return;
+  const data=event.data;
+  if(!data||data.type!=='lesson1:command'||!['snapshot','start','close','explain'].includes(data.action))return;
+  if(data.action==='snapshot'){postDeckSnapshot();return;}
+  if(typeof data.id!=='string'||data.id.length>80||!byId[data.question])return;
+  const ok=await action(async()=>{
+    const s=state;
+    if(data.action==='start'){
+      if(s?.question===data.question&&s.phase==='open')return;
+      if(s?.question===data.question&&s.phase==='idle')await change(s,{phase:'open'});
+      else {const next={...newState(data.question,s?.session||crypto.randomUUID()),phase:'open'};if(s)await change(s,next);else await set(ref(db,`${room}/state`),next);}
+    }else{
+      if(s?.question!==data.question)throw new Error('Question changed');
+      if(data.action==='close'){if(s.phase!=='open')throw new Error('Voting is closed');await change(s,{phase:'closed'});}
+      else {if(!['open','closed','results'].includes(s.phase))throw new Error('No voting to explain');await showExplanation();}
+    }
+  });
+  window.parent.postMessage({type:'lesson1:command-result',id:data.id,ok,error:ok?'':$('message').textContent||'Действие не выполнено. Проверьте соединение.'},'*');
 });
 
 async function boot(){
