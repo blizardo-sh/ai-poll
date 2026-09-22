@@ -9,7 +9,7 @@ const isDeckBridge=window.parent!==window&&new URLSearchParams(location.search).
 const base='lesson1',room=`${base}/rooms/main`;
 let state=null,user=null,online=false,busy=false,selection=null,total=0;
 let db,auth,roundSubscriptions=[],unsubState=null;
-let votesLoaded=false;
+let votesLoaded=false,stateLoaded=false;
 let confirmedRound='',pendingVote=false,liveResults={counts:[],total:0};
 const phaseNames={idle:'Скоро начнём',open:'Можно отвечать',closed:'Голосование закончено',results:'Ответы группы',explanation:'Обсуждаем ответы'};
 const hasResults=s=>['open','closed','results','explanation'].includes(s?.phase);
@@ -125,7 +125,7 @@ addEventListener('keydown',event=>{
 // Only aggregate results are sent to the presentation. No tokens or voter IDs leave this frame.
 function postDeckSnapshot(){
   if(!isDeckBridge)return;
-  window.parent.postMessage({type:'lesson1:snapshot',ready:online&&!!user&&(!state||votesLoaded),online,busy,
+  window.parent.postMessage({type:'lesson1:snapshot',ready:online&&!!user&&stateLoaded&&(!state||votesLoaded),online,busy,
     question:state?.question||'',phase:state?.phase||'',round:state?.round||'',session:state?.session||'',
     counts:liveResults.counts,total:liveResults.total,explanation:state?.phase==='explanation'?$('explanation').textContent:'',error:$('message').textContent},'*');
 }
@@ -159,9 +159,11 @@ async function boot(){
   if(emulator){connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});connectDatabaseEmulator(db,'127.0.0.1',9000);}
   onValue(ref(db,'.info/connected'),snap=>{online=snap.val()===true;$('connection').textContent=online?'На связи':'Нет соединения. Голосование временно недоступно.';$('connection').classList.toggle('offline',!online);render()},notice);
   onAuthStateChanged(auth,async account=>{
+    stateLoaded=false;
     clearRound();if(unsubState)unsubState();unsubState=null;user=account;renderControls();
     if(!account){try{await signInAnonymously(auth)}catch(e){notice(e)}return;}
     unsubState=onValue(ref(db,`${room}/state`),snap=>{
+      stateLoaded=true;
       const s=snap.val();if(!s){state=null;render();return;}
       const roundChanged=state?.round!==s.round;
       const questionChanged=state?.question!==s.question;
