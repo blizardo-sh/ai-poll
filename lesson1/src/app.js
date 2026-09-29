@@ -4,6 +4,7 @@ import {getDatabase,ref,onValue,get,set,runTransaction,connectDatabaseEmulator} 
 import {questions,prompts} from '../content.js';
 
 const $=id=>document.getElementById(id);
+const activeQuestions=questions.filter(q=>!q.legacy);
 const byId=Object.fromEntries(questions.map(q=>[q.id,q]));
 const isDeckBridge=window.parent!==window&&new URLSearchParams(location.search).get('bridge')==='1';
 const base='lesson1',room=`${base}/rooms/main`;
@@ -26,7 +27,7 @@ function renderControls(){
   $('start').disabled=off||state?.phase!=='idle';
   $('close').disabled=off||state?.phase!=='open';
   $('explain').disabled=off||!['open','closed','results'].includes(state?.phase);
-  $('next').disabled=off||!state||state.phase==='open'||questions.findIndex(q=>q.id===state.question)===questions.length-1;
+  $('next').disabled=off||!state||state.phase==='open'||activeQuestions.findIndex(q=>q.id===state.question)===activeQuestions.length-1;
   ['choose','repeat'].forEach(id=>$(id).disabled=off||state?.phase==='open');
   $('new-session').disabled=off;
   $('update-prompt').disabled=off||!state||state.phase==='open'||!byId[state.question]?.promptId;
@@ -40,7 +41,7 @@ function renderChoices(){
     q.options.forEach((label,i)=>{
       const button=document.createElement('button');button.className='choice';button.type='button';button.setAttribute('aria-label',`${i+1}. ${label}`);
       if(q.kind==='cats'){
-        const photo=document.createElement('span');photo.className='cat-photo';photo.style.setProperty('--x',`${i%3*50}%`);photo.style.setProperty('--y',`${Math.floor(i/3)*100}%`);photo.setAttribute('aria-hidden','true');button.append(photo);
+        const photo=document.createElement('span');photo.className='cat-photo';photo.style.setProperty('--x',`${i%3*50}%`);photo.style.setProperty('--y',`${Math.floor(i/3)*100}%`);photo.setAttribute('aria-hidden','true');if(q.images?.[i]){photo.style.backgroundImage=`url(${q.images[i]})`;photo.style.backgroundSize='contain';photo.style.backgroundRepeat='no-repeat';photo.style.backgroundPosition='center'}button.append(photo);
       }
       const line=document.createElement('span');line.className='cat-label';const number=document.createElement('span');number.className='number';number.textContent=i+1;line.append(number);if(q.kind!=='cats'){const text=document.createElement('span');text.textContent=label;line.append(text)}const score=document.createElement('span');score.className='result-count';line.append(score);button.append(line);button.onclick=()=>vote(i);box.append(button);
     });
@@ -51,12 +52,12 @@ function render(){
   renderControls();const q=byId[state?.question];
   if(!q){$('question').textContent='Сейчас начнём';$('hint').textContent='Вопрос появится, когда преподаватель начнёт встречу.';return;}
   document.body.classList.toggle('mood',q.kind==='cats');
-  $('step').textContent=`Вопрос ${questions.indexOf(q)+1} из ${questions.length}`;
+  $('step').textContent=q.legacy ? `Вопрос прежней редакции` : `Вопрос ${activeQuestions.indexOf(q)+1} из ${activeQuestions.length}`;
   $('phase').textContent=phaseNames[state.phase]||'';
   $('question').textContent=q.title;$('hint').textContent=q.hint;
   $('prompt-box').hidden=!q.promptId;$('prompt').textContent=state.prompt||prompts[q.promptId]||'';
   $('total').textContent=`Ответили: ${total}`;
-  $('explanation-box').hidden=state.phase!=='explanation';
+  $('explanation-box').hidden=!q.explanation&&state.phase!=='explanation';if(q.explanation)$('explanation').textContent=q.explanation;
   if(confirmedRound===state.round&&selection!==null)$('vote-status').textContent=state.phase==='open'?'Ответ записан. До окончания можно выбрать другой вариант.':'Ваш ответ записан.';
   else $('vote-status').textContent=state.phase==='open'?'Нажмите на вариант.':state.phase==='idle'?'Преподаватель скоро откроет голосование.':'';
   renderChoices();
@@ -103,16 +104,16 @@ async function showExplanation(){
   const s={...state};const explanation=(await get(ref(db,`${base}/explanations/${s.question}`))).val();
   if(!explanation)throw new Error('No explanation');
   await set(ref(db,`${room}/revealed/${s.round}`),explanation);
-  await change(s,{phase:'explanation'});
+  await change(s,{phase:'explanation'});$('explanation-box').open=true;
 }
 $('explain').onclick=()=>action(showExplanation);
-$('next').onclick=()=>action(()=>moveTo(questions[questions.findIndex(q=>q.id===state.question)+1].id));
+$('next').onclick=()=>action(()=>moveTo(activeQuestions[activeQuestions.findIndex(q=>q.id===state.question)+1].id));
 $('repeat').onclick=()=>action(()=>moveTo(state.question));
 $('choose').onclick=()=>action(()=>moveTo($('question-select').value));
-$('new-session').onclick=()=>action(()=>moveTo('mood',true));
+$('new-session').onclick=()=>action(()=>moveTo('mood-v2',true));
 $('update-prompt').onclick=()=>action(()=>change(state,{prompt:$('prompt-edit').value.trim()}));
 $('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('prompt').textContent);$('copy').textContent='Скопировано';setTimeout(()=>$('copy').textContent='Скопировать запрос',2200)}catch{const range=document.createRange();range.selectNodeContents($('prompt'));getSelection().removeAllRanges();getSelection().addRange(range);message('Текст выделен. Скопируйте его обычным способом.')}};
-questions.forEach(q=>{const o=document.createElement('option');o.value=q.id;o.textContent=q.title;$('question-select').append(o)});
+activeQuestions.forEach(q=>{const o=document.createElement('option');o.value=q.id;o.textContent=q.title;$('question-select').append(o)});
 
 // Physical keys work with both Russian and English keyboard layouts.
 addEventListener('keydown',event=>{
