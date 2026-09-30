@@ -6,7 +6,13 @@ import {questions,prompts} from '../content.js';
 const $=id=>document.getElementById(id);
 const activeQuestions=questions.filter(q=>!q.legacy);
 const byId=Object.fromEntries(questions.map(q=>[q.id,q]));
-const isDeckBridge=window.parent!==window&&new URLSearchParams(location.search).get('bridge')==='1';
+const params=new URLSearchParams(location.search);
+const isDeckBridge=window.parent!==window&&params.get('bridge')==='1';
+// Controls, keyboard shortcuts and the explanation are shown only on the presenter's page (?teacher=1 or #teacher).
+// Participants see the question, the options and the group's answers; the presentation drives the poll through the bridge frame.
+const isTeacher=params.get('teacher')==='1'||location.hash==='#teacher';
+document.body.classList.toggle('with-controls',isTeacher);
+$('teacher').hidden=!isTeacher;
 const base='lesson1',room=`${base}/rooms/main`;
 let state=null,user=null,online=false,busy=false,selection=null,total=0;
 let db,auth,roundSubscriptions=[],unsubState=null;
@@ -57,7 +63,7 @@ function render(){
   $('question').textContent=q.title;$('hint').textContent=q.hint;
   $('prompt-box').hidden=!q.promptId;$('prompt').textContent=state.prompt||prompts[q.promptId]||'';
   $('total').textContent=`Ответили: ${total}`;
-  $('explanation-box').hidden=!q.explanation&&state.phase!=='explanation';if(q.explanation)$('explanation').textContent=q.explanation;
+  $('explanation-box').hidden=!isTeacher||(!q.explanation&&state.phase!=='explanation');if(q.explanation)$('explanation').textContent=q.explanation;
   if(confirmedRound===state.round&&selection!==null)$('vote-status').textContent=state.phase==='open'?'Ответ записан. До окончания можно выбрать другой вариант.':'Ваш ответ записан.';
   else $('vote-status').textContent=state.phase==='open'?'Нажмите на вариант.':state.phase==='idle'?'Преподаватель скоро откроет голосование.':'';
   renderChoices();
@@ -117,6 +123,7 @@ activeQuestions.forEach(q=>{const o=document.createElement('option');o.value=q.i
 
 // Physical keys work with both Russian and English keyboard layouts.
 addEventListener('keydown',event=>{
+  if(!isTeacher)return;
   if(event.repeat||event.isComposing||event.ctrlKey||event.metaKey||event.altKey||event.target.closest('input,textarea,select,[contenteditable="true"]'))return;
   const key=event.code||({s:'KeyS','ы':'KeyS',c:'KeyC','с':'KeyC',o:'KeyO','щ':'KeyO',n:'KeyN','т':'KeyN'}[event.key.toLowerCase()]);
   const id={KeyS:'start',KeyC:'close',KeyO:'explain',KeyN:'next'}[key];
